@@ -260,18 +260,6 @@ _END_
 
 #=cut
 
-#    for my $method (grep { ! /^\s*#/ } split m/\n/, <<_END_) {
-#abs
-#rel
-#_END_
-#        *$method = sub {
-#            my $self = shift;
-#            my $uri = $self->{uri}->$method(@_);
-#            my $class = ref $self;
-#            return $class->new($uri);
-#        }
-#    }
-
 =head2 ->opaque
 
 =head2 ->path_query

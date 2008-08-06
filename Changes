@@ -1,2 +1,3 @@
 0.01 Wednesday August 06 01:02:23 PDT 2008:
     - Initial release; stolen from the Path::Abstract codebase
+    - Added WithBase-esque functionality
