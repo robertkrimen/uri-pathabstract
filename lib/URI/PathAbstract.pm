@@ -36,7 +36,7 @@ our $VERSION = '0.01';
 
 =head1 DESCRIPTION
 
-URI::PathAbstract is a combination of the L<URI> and L<Path::Abstract> classes. It is essentially a URI
+URI::PathAbstract is a combination of the L<URI::WithBase> and L<Path::Abstract> classes. It is essentially a URI
 class that delegates path-handling methods to Path::Abstract
 
 Unfortunately, this is not true:
@@ -60,43 +60,38 @@ use overload
 
 =head1 METHODS
 
-=head2 URI::PathAbstract->new( <uri> )
+=head2 URI::PathAbstract->new( <uri>, ... )
 
 Create a new URI::PathAbstract object based on <uri>
 
 <uri> should be of the L<URI> class or some sort of URI-like string
 
-=head2 URI::PathAbstract->new( <uri>, path => <path> )
+=head2 URI::PathAbstract->new( <uri>, path => <path>, ... )
 
 Create a new URI::PathAbstract object based on <uri> but overriding the path with <path>
 
     URI::PathAbstract->new("http://example.com/cherry?a=b", path => "grape/lemon")
     # http://example.com/grape/lemon?a=b"
 
-=head2 URI::PathAbstract->new( <uri>, child => <child> )
+=head2 URI::PathAbstract->new( <uri>, child => <child>, ... )
 
 Create a new URI::PathAbstract object based on <uri> but modifying the path by <child>
 
     URI::PathAbstract->new("http://example.com/cherry?a=b", child => "grape/lemon")
     # http://example.com/cherry/grape/lemon?a=b"
 
-=head2 $uri->uri
+=head2 URI::PathAbstract->new( ... )
 
-Returns a L<URI> object that is a copy (not a reference) of the URI object inside $uri
+Create a new URI::PathAbstract object based on the following:
 
-=head2 $uri->path
+    uri         The URI you want to represent
 
-Returns a L<Path::Abstract> object that is a copy (not a reference) of the Path::Abstract object inside $uri
+    base        A base URI for use with ->abs and ->rel
 
-=head2 $uri->path( <path> )
+    path        A path that will override the path of the given uri
+                (although the scheme, host, ... will remain the same)
 
-Sets the path of $uri, completely overwriting what was there before
-
-The rest of $uri (host, port, scheme, query, ...) does not change
-
-=head2 $uri->clone
-
-Returns a URI::PathAbstract that is an exact clone of $uri
+    child       A path that will be appended to the path of the given uri
 
 =cut
 
@@ -128,34 +123,77 @@ sub new {
     return $self;
 }
 
+=head2 $uri->uri
+
+Returns a L<URI> object that is a copy (not a reference) of the URI object inside $uri
+
+=cut
+
 sub uri {
     my $self = shift;
+    if (@_) {
+        my $uri = shift;
+        $uri = URI->new($uri) unless blessed $uri;
+        $self->_path($uri->path);
+        $self->{uri} = $uri->clone;
+    }
+    return unless defined wantarray;
     return $self->{uri}->clone unless @_;
-    my $uri = shift;
-    $uri = URI->new($uri) unless blessed $uri;
-    $self->path($uri->path, 1);
-    $self->{uri} = $uri->clone;
-    return $self;
 }
+
+=head2 $uri->path
+
+Returns a L<Path::Abstract> object that is a copy (not a reference) of the Path::Abstract object inside $uri
+
+=head2 $uri->path( <path> )
+
+Sets the path of $uri, completely overwriting what was there before
+
+The rest of $uri (host, port, scheme, query, ...) does not change
+
+=cut
 
 sub path {
     my $self = shift;
-    return $self->{path}->clone unless @_;
-    my $path = shift;
-    $path = "" unless defined $path;
-    $path = Path::Abstract->new("$path");
-    my $skip_modifying = shift;
-#    $path->to_tree;
-    $self->{path} = $path;
-    $self->{uri}->path($path->get) unless $skip_modifying;
-    return $self;
+    if (@_) {
+        my $path = $self->_path(@_);
+        $self->{uri}->path($path->get);
+    }
+    return unless defined wantarray;
+    return $self->{path}->clone;
 }
+
+sub _path {
+    my $self = shift;
+    my @path = @_;
+    @path = @{ $path[0] } if ref $path[0] eq "ARRAY";
+    my $path = Path::Abstract->new(@path);
+    $self->{path} = $path;
+}
+
+=head2 $uri->clone
+
+Returns a URI::PathAbstract that is an exact clone of $uri
+
+=cut
 
 sub clone {
     my $self = shift;
     my $class = ref $self;
     return $class->new($self->uri);
 }
+
+=head2 $uri->base
+
+Returns a L<URI::PathAbstract> object that is a copy (not a reference) of the base for $uri
+
+Returns undef if $uri does not have a base uri
+
+=head2 $uri->base( <base> )
+
+Sets the base of $uri to <base>
+
+=cut
 
 sub base {
     my $self = shift;
@@ -168,13 +206,24 @@ sub base {
         }
         $self->{base} = $base;
     }
-
     return unless defined wantarray;
-
-    return unless defined $self->{base};
-
+    return undef unless defined $self->{base};
     return $self->{base}->clone;
 }
+
+=head2 $uri->abs
+
+=head2 $uri->abs( [ <base> ] )
+
+Returns a L<URI::PathAbstract> object that is the absolute URI formed by combining $uri and <base>
+
+If <base> is not given, then $uri->base is used as the base
+
+If <base> is not given and $uri->base does not exist, then a clone of $uri is returned
+
+See L<URI> and L<URI::WithBase> for more C<abs> information
+
+=cut
 
 sub abs {
     my $self = shift;
@@ -182,6 +231,20 @@ sub abs {
     my $base = shift || $self->base || return $self->clone;
     return $class->new(uri => $self->uri->abs("$base", @_), base => $base);
 }
+
+=head2 $uri->rel
+
+=head2 $uri->rel( [ <base> ] )
+
+Returns a L<URI::PathAbstract> object that is the relative URI formed by comparing $uri and <base>
+
+If <base> is not given, then $uri->base is used as the base
+
+If <base> is not given and $uri->base does not exist, then a clone of $uri is returned
+
+See L<URI> and L<URI::WithBase> for more C<rel> information
+
+=cut
 
 sub rel {
     my $self = shift;
