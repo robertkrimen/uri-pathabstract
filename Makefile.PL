@@ -24,7 +24,9 @@ _END_
 
     map { my ($pk, $vr) = split m/\s/; requires $pk => $vr || 0 } grep { ! /^\s*#/ } split m/\n/, <<_END_;
 URI
-Path::Abstract 0.085
+Path::Abstract 0.089
+Scalar::Util
+Carp
 _END_
 }
 
