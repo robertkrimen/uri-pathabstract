@@ -446,9 +446,9 @@ Robert Krimen, C<< <rkrimen at cpan.org> >>
 
 You can contribute or fork this project via GitHub:
 
-L<http://github.com/robertkrimen/path-abstract/tree/master>
+L<http://github.com/robertkrimen/uri-pathabstract/tree/master>
 
-    git clone git://github.com/robertkrimen/path-abstract.git Path-Abstract
+    git clone git://github.com/robertkrimen/uri-pathabstract.git URI-PathAbstract
 
 =head1 BUGS
 
